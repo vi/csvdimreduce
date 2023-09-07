@@ -66,16 +66,16 @@ fn main() -> anyhow::Result<()>{
         weights.fill(1.0);
     }
 
-    let squeeze_n_coords = opts.squeeze_n_coords.unwrap_or(0);
-    let squeeze_rampup_rate = opts.squeeze_rampup_rate.unwrap_or(0.001);
-    let squeeze_rampup_iters = opts.squeeze_rampup_iters.unwrap_or(0);
-    let squeeze_final_force = opts.squeeze_final_force.unwrap_or(1000.0);
-    let squeeze_final_initial_rate = opts.squeeze_final_initial_rate.unwrap_or(0.001);
-    let squeeze_final_iters = opts.squeeze_final_iters.unwrap_or(0);
-    let n_iters = opts.n_iters.unwrap_or(100);
+    let n_iters = opts.n_iters.unwrap_or(90);
     let rate = opts.rate.unwrap_or(0.1);
     let rate_decay = opts.rate_decay.unwrap_or(0.95);
     let central_force = opts.central_force.unwrap_or(30.0);
+    let retain_coords_from_squeezing = opts.retain_coords_from_squeezing.unwrap_or(0);
+    let squeeze_rampup_rate = opts.squeeze_rampup_rate.unwrap_or(rate*0.1);
+    let squeeze_rampup_iters = opts.squeeze_rampup_iters.unwrap_or(if opts.retain_coords_from_squeezing.is_some() { n_iters * 10 } else { 0 });
+    let squeeze_final_iters = opts.squeeze_final_iters.unwrap_or(if opts.retain_coords_from_squeezing.is_some() { n_iters } else { 0 });
+    let squeeze_final_force = opts.squeeze_final_force.unwrap_or(2.0 * central_force);
+    let squeeze_final_initial_rate = opts.squeeze_final_initial_rate.unwrap_or(squeeze_rampup_rate);
 
     //println!("{} {}", data, weights);
     let mut state = algorithm::State {
@@ -89,7 +89,7 @@ fn main() -> anyhow::Result<()>{
         rate,
         central_force,
         tmp: tmp.view_mut(),
-        squeeze_from: squeeze_n_coords,
+        squeeze_from: retain_coords_from_squeezing,
         squeeze_force: central_force,
     };
     for _ in 0..n_iters {

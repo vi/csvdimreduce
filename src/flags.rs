@@ -94,9 +94,9 @@ xflags::xflags! {
         optional -n, --n-iters n: usize
         optional -r,--rate rate: f64
         optional -d,--rate-decay decay: f64
-        optional --central-force f: f64
-        optional --same-particle-force f: f64
-        optional --squeeze-n-coords n: usize
+        optional -C,--central-force f: f64
+        optional -F,--same-particle-force f: f64
+        optional -S,--retain_coords_from_squeezing n: usize
         optional --squeeze-rampup-rate rate: f64
         optional --squeeze-rampup-iters n: usize
         optional --squeeze-final-force f: f64
@@ -125,12 +125,12 @@ pub struct Csvdimreduce {
     pub rate_decay: Option<f64>,
     pub central_force: Option<f64>,
     pub same_particle_force: Option<f64>,
-    pub squeeze_n_coords: Option<usize>,
+    pub retain_coords_from_squeezing: Option<usize>,
     pub squeeze_rampup_rate: Option<f64>,
     pub squeeze_rampup_iters: Option<usize>,
+    pub squeeze_final_force: Option<f64>,
     pub squeeze_final_initial_rate: Option<f64>,
     pub squeeze_final_iters: Option<usize>,
-    pub squeeze_final_force: Option<f64>,
 }
 
 impl Csvdimreduce {
