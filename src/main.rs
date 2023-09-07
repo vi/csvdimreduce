@@ -2,6 +2,7 @@ use rand::{SeedableRng, Rng};
 use trimothy::TrimSlice;
 
 mod flags;
+mod algorithm;
 
 type Arr2 = ndarray::Array2<f64>;
 type Arr1 = ndarray::Array1<f64>;
@@ -21,7 +22,8 @@ fn main() -> anyhow::Result<()>{
     let n_out_coords = opts.n_out_coords;
     let n_rows = records.len();
     let n_input_coords = opts.columns.0.len();
-    let mut data = Arr2::zeros((n_rows, n_out_coords + n_input_coords));
+    let mut coords = Arr2::zeros((n_rows, n_out_coords + n_input_coords));
+    let mut forces = Arr2::zeros((n_rows, n_out_coords + n_input_coords));
     let mut weights = Arr1::zeros(n_rows);
 
     for (j,record) in records.iter().enumerate() {
@@ -31,7 +33,7 @@ fn main() -> anyhow::Result<()>{
             if opts.columns.0.contains(&(i+1)) {
                 let field = field.trim();
                 let x : f64 = std::str::from_utf8(field)?.parse()?;
-                data[(j,n_out_coords+ctr)] = x;
+                coords[(j,n_out_coords+ctr)] = x;
                 ctr+=1;
             }
             if Some(i+1) == weight_debt {
@@ -51,14 +53,32 @@ fn main() -> anyhow::Result<()>{
     let mut rng = rand::rngs::StdRng::seed_from_u64(opts.random_seed.unwrap_or(1));
     for j in 0..n_rows {
         for i in 0..n_out_coords {
-            data[(j,i)] = rng.gen();
+            coords[(j,i)] = rng.gen();
         }
     }
     if opts.weight.is_none() {
         weights.fill(1.0);
     }
 
-    println!("{} {}", data, weights);
+    //println!("{} {}", data, weights);
+    let mut state = algorithm::State {
+        coords: coords.view_mut(),
+        forces: forces.view_mut(),
+        weights: weights.view(),
+    };
+    let mut tmp = Arr1::zeros(n_out_coords);
+    let rate_decay = opts.rate_decay.unwrap_or(0.95);
+    let mut params = algorithm::Params {
+        coordinate_range_to_consider: 0..n_out_coords,
+        coordinate_range_to_clamp: 0..n_out_coords,
+        rate: opts.rate.unwrap_or(0.1),
+        central_force: opts.central_force.unwrap_or(8.0),
+        tmp: tmp.view_mut(),
+    };
+    for _ in 0..opts.n_iters.unwrap_or(100) {
+        state.step(&mut params);
+        params.rate *= rate_decay;
+    }
 
     let f = opts.get_ostream()?;
     let mut f = opts.get_csv_writer().from_writer(f);
@@ -72,7 +92,7 @@ fn main() -> anyhow::Result<()>{
 
     for (j,record) in records.iter().enumerate() {
         for i in 0..n_out_coords {
-            f.write_field(format!("{:.4}", data[(j,i)]))?;
+            f.write_field(format!("{:.4}", coords[(j,i)]))?;
         }
         f.write_field("")?;
         f.write_byte_record(&record)?;

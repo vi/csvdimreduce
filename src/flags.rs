@@ -91,6 +91,10 @@ xflags::xflags! {
         optional --random-seed seed: u64
         /// Use this column as weights
         optional -w,--weight column_number: usize
+        optional -n, --n-iters n: usize
+        optional -r,--rate rate: f64
+        optional -d,--rate-decay decay: f64
+        optional --central-force f: f64
     }
 }
 // generated start
@@ -109,6 +113,10 @@ pub struct Csvdimreduce {
     pub output: Option<PathBuf>,
     pub random_seed: Option<u64>,
     pub weight: Option<usize>,
+    pub n_iters: Option<usize>,
+    pub rate: Option<f64>,
+    pub rate_decay: Option<f64>,
+    pub central_force: Option<f64>,
 }
 
 impl Csvdimreduce {
