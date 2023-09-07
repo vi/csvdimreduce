@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.74"
 csv = "1.2.2"
+interpolation = "0.2.0"
 ndarray = "0.15.6"
 number_range = "0.3.2"
 rand = "0.8.5"
