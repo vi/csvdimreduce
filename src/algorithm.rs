@@ -115,3 +115,7 @@ pub fn build_particle_affinities<'a,'b>(input: Ar2Ref<'a>, mut output:Ar2Mut<'b>
         }
     }
 }
+
+pub fn average_affinity<'a>(matrix: Ar2Ref<'a>) -> f64 {
+    matrix.sum() / matrix.len() as f64
+}

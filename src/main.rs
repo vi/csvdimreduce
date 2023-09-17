@@ -66,15 +66,18 @@ fn main() -> anyhow::Result<()>{
         weights.fill(1.0);
     }
 
+    let avgaff = algorithm::average_affinity(affinities.view());
+
     let n_iters = opts.n_iters.unwrap_or(90);
     let rate = opts.rate.unwrap_or(0.1);
     let rate_decay = opts.rate_decay.unwrap_or(0.95);
-    let central_force = opts.central_force.unwrap_or(30.0);
+    let central_force_param = opts.central_force.unwrap_or(20.0);
+    let central_force = avgaff*central_force_param;
     let retain_coords_from_squeezing = opts.retain_coords_from_squeezing.unwrap_or(0);
     let squeeze_rampup_rate = opts.squeeze_rampup_rate.unwrap_or(rate*0.1);
     let squeeze_rampup_iters = opts.squeeze_rampup_iters.unwrap_or(if opts.retain_coords_from_squeezing.is_some() { n_iters * 10 } else { 0 });
     let squeeze_final_iters = opts.squeeze_final_iters.unwrap_or(if opts.retain_coords_from_squeezing.is_some() { n_iters } else { 0 });
-    let squeeze_final_force = opts.squeeze_final_force.unwrap_or(2.0 * central_force);
+    let squeeze_final_force = avgaff*opts.squeeze_final_force.unwrap_or(1.3 * central_force_param);
     let squeeze_final_initial_rate = opts.squeeze_final_initial_rate.unwrap_or(squeeze_rampup_rate);
 
     //println!("{} {}", data, weights);
