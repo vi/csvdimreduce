@@ -35,6 +35,10 @@ impl<'a> State<'a> {
         assert_eq!(n, self.weights.len_of(Axis(0)));
         assert_eq!(cn, self.coords.len_of(Axis(1)));
         assert_eq!(self.affinities.dim(), (n,n));
+
+        let central_force = params.central_force;
+        let squeeze_from = params.squeeze_from;
+        let squeeze_force = params.squeeze_force;
         
         self.forces.fill(0.0);
         let mut vector = &mut params.tmp;
@@ -48,8 +52,8 @@ impl<'a> State<'a> {
             let my_weight = weights[j];
             let affinities_shard = affinities.slice(s![j, ..]);
             let mut my_forces = forces.slice_mut(s![j, ..]);
-            azip!(
-                (index (p),
+            azip!((
+                index (p),
                 their_coords in coords.rows(),
                 affinity in affinities_shard,
                 their_weight in weights,
@@ -73,23 +77,25 @@ impl<'a> State<'a> {
                     my_forces.scaled_add(repelling_force, vector);
                 }
             });
-            for c in 0..cn {
-                let mut cc = self.coords[(j, c)];
+            azip!((
+                index (c),
+                cc in my_coords,
+                ff in &mut my_forces,
+            ) {
+                let mut cc = *cc;
                 cc = cc - 0.5;
-                if c >= params.squeeze_from {
-                    cc = params.squeeze_force*cc;
+                if c >= squeeze_from {
+                    cc = squeeze_force*cc;
                 } else {
-                    cc = params.central_force*cc;
+                    cc = central_force*cc;
 
                 }
-                forces[(j, c)] -= (n as f64) * cc;
-            } 
+                *ff -= (n as f64) * cc;
+            });
         }
         let mut maxforcecoord = 0.0;
-        for j in 0..n {
-            for c in 0..cn {
-                maxforcecoord = self.forces[(j,c)].abs().max(maxforcecoord);
-            }
+        for f in forces {
+            maxforcecoord = f.abs().max(maxforcecoord);
         }
         maxforcecoord = maxforcecoord.max(0.0001);
         
@@ -98,16 +104,8 @@ impl<'a> State<'a> {
 
         self.coords.scaled_add(scale, &self.forces);
 
-        for j in 0..n {
-            for c in 0..cn {
-                let cc = self.coords[(j, c)];
-                if cc <= -0.0 {
-                    self.coords[(j,c)] = 0.0;
-                }
-                if cc >= 1.0 {
-                    self.coords[(j,c)] = 1.0;
-                }
-            }
+        for cc in self.coords.iter_mut() {
+            *cc = cc.clamp(0.0, 1.0);
         }
     }
 }
