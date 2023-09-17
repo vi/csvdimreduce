@@ -2,7 +2,7 @@
 
 use std::ops::Range;
 
-use ndarray::{Axis, s};
+use ndarray::{Axis, s, azip};
 
 pub type Ar2Mut<'a> = ndarray::ArrayViewMut2<'a, f64>;
 pub type Ar2Ref<'a> = ndarray::ArrayView2<'a, f64>;
@@ -38,28 +38,41 @@ impl<'a> State<'a> {
         
         self.forces.fill(0.0);
         let mut vector = &mut params.tmp;
-        for j in 0..n {
-            for p in 0..n {
-                if j==p { continue; }
-                vector.fill(0.0);
-                let mut sqnorm = 0.0;
-                for c in 0..cn {
-                    vector[c] = self.coords[(j,c)] - self.coords[(p,c)];
-                    sqnorm += vector[c] * vector[c];
-                }
-                if sqnorm < 0.0001 {
-                    sqnorm = 0.0001;
-                }
-                let norm = sqnorm.sqrt();
-                for x in vector.iter_mut() {
-                    *x /= norm;
-                }
-                let repelling_force = self.affinities[(j,p)]/sqnorm;
-                //println!("{repelling_force} {vector}");
-                //print!("{repelling_force} ");
 
-                self.forces.slice_mut(s![j, ..]).scaled_add(repelling_force, vector);
-            }
+        let coords = self.coords.view();
+        let mut forces = self.forces.view_mut();
+        let affinities = self.affinities.view();
+        let weights = self.weights.view();
+        for j in 0..n {
+            let my_coords = coords.slice(s![j, ..]);
+            let my_weight = weights[j];
+            let affinities_shard = affinities.slice(s![j, ..]);
+            let mut my_forces = forces.slice_mut(s![j, ..]);
+            azip!(
+                (index (p),
+                their_coords in coords.rows(),
+                affinity in affinities_shard,
+                their_weight in weights,
+            ) {
+                if j != p {
+                    vector.fill(0.0);
+                    let mut sqnorm = 0.0;
+                    azip!((vc in vector.view_mut(), myc in my_coords, theirc in their_coords) {
+                        *vc = myc - theirc;
+                        sqnorm += *vc * *vc;
+                    });
+
+                    if sqnorm < 0.0001 {
+                        sqnorm = 0.0001;
+                    }
+                    let norm = sqnorm.sqrt();
+                    for x in vector.iter_mut() {
+                        *x /= norm;
+                    }
+                    let repelling_force = affinity/sqnorm*their_weight/my_weight;
+                    my_forces.scaled_add(repelling_force, vector);
+                }
+            });
             for c in 0..cn {
                 let mut cc = self.coords[(j, c)];
                 cc = cc - 0.5;
@@ -69,7 +82,7 @@ impl<'a> State<'a> {
                     cc = params.central_force*cc;
 
                 }
-                self.forces[(j, c)] -= (n as f64) * cc;
+                forces[(j, c)] -= (n as f64) * cc;
             } 
         }
         let mut maxforcecoord = 0.0;
