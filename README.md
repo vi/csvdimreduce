@@ -18,31 +18,52 @@ I don't know how this algorithm is formally called.
 
 ## Example 1
 
+Using [80 cereals](https://www.kaggle.com/datasets/crawford/80-cereals/) dataset.
+
 ```
 $ wget https://gist.github.com/kcoltenbradley/1e8672cb5dff4a4a5e8dbef27ac185f6/raw/9a311a88d5aabdfddd4c9f0d1316612ec33d3d5e/cereal.csv
+
+$ csvdimreduce 4:13 4 -S 2 -N cereal.csv -o output.csv
+
+$ xsv table output.csv | head -n5 | cut -c 1-70
+coord1  coord2  coord3  coord4  Cereal Name                  Manufactu
+0.7637  0.1889  0.5000  0.5000  100%_Bran                    Nabisco
+0.8742  0.6806  0.5000  0.5000  100%_Natural_Bran            Quaker Oa
+0.8334  0.2408  0.5000  0.5000  All-Bran                     Kelloggs
+0.7007  0.0888  0.5000  0.5000  All-Bran_with_Extra_Fiber    Kelloggs
+
+$ cat output.csv | tail -n +2 | tr ',_' ' .' | awk '{print $1, $2, $5}' | feedgnuplot --domain --style 0 'with labels' --rangesize 0 2
 ```
 
-TODO
+![Visualisation of dimreduced cereal.csv](cereal.png).
+
 
 ## Example 2
 
-TODO
+Let's "reduce" somewhat regular onedimensional data to 2 dimensions (using two another temporarly dimensions in process) and visualize the algorithm steps.
 
+<details><summary>Code</summary>
 
 ```
-parallel -j12  -i bash -c 'render2d {}' -- debug0*csv
-ffmpeg -i debug'%05d'.csv.png -g 500 -pix_fmt yuv420p -c librav1e -qp 220 -speed 1 -y q.webm
-render2d() { awk '{print $1,$2,$5}' "$1" | feedgnuplot --xmin 0 --xmax 1 --ymin 0 --ymax 1 --domain --style 0 'with labels' --rangesize 0 2 --hardcopy "$1".png --terminal 'png size 1000,1000'; }
-cdr  --save-each-n-iters 1 --delimiter ' ' --no-header 1 4 -S 2 -r 0.03 -C 14 -F 2 -n 130 q.txt -o w.txt
- 2072  seq 0 100 > q.txt
- 2073  seq 50 150 >> q.txt
- 2074  seq 300 350 >> q.txt
+$ seq 0 100 > q.txt
+$ seq 50 150 >> q.txt
+$ seq 300 350 >> q.txt
 
-cdr  --save-each-n-iters 1 --delimiter ' ' --no-header 1 4 -S 2 -C 14 -F 2 -n 200 -r 0.02 q.txt -o w.txt
-cdr  --save-each-n-iters 1 --delimiter ' ' --no-header 1 4 -S 2 -F 0.28 ../q.txt -o ../w.txt -n 1000 -r 0.001 -c 10 -C 200 --squeeze-rampup-iters 500  --debug | rg movement | awk '{print $2}' | feedgnuplot
-export -f render2d_beta
-ffmpeg -i a/debug'%05d'.csv.png -i a/beta/debug'%05d'.csv.png -filter_complex '[0]pad=2000:1000[a]; [a][1]overlay=1000'  -g 500 -pix_fmt yuv420p -c librav1e -qp 185 -speed 1 -y b.webm
+$ csvdimreduce  --save-each-n-iters 1 --delimiter ' ' --no-header 1 4 -S 2 -F 0.28 ../q.txt -o ../w.txt -n 1000 -r 0.001 -c 10 -C 200 --squeeze-rampup-iters 500
+
+$ mkdir beta
+$ render2d_a() { awk '{print $1,$2,$5}' "$1" | feedgnuplot --xmin 0 --xmax 1 --ymin 0 --ymax 1 --domain --style 0 'with labels' --rangesize 0 2 --hardcopy beta/a."$1".png --terminal 'png size 960,1080' &> /dev/null; }
+$ render2d_b() { awk '{print $3,$4,$5}' "$1" | feedgnuplot --xmin 0 --xmax 1 --ymin 0 --ymax 1 --domain --style 0 'with labels' --rangesize 0 2 --hardcopy beta/b."$1".png --terminal 'png size 960,1080' &> /dev/null; }
+$ export -f render2d_a render2d_b
+$ parallel -j12  -i bash -c 'render2d_a {}' -- debug0*csv
+$ parallel -j12  -i bash -c 'render2d_b {}' -- debug0*csv
+$ ffmpeg -i beta/a.debug'%05d'.csv.png -i beta/b.debug'%05d'.csv.png -filter_complex '[0]pad=1920:1080[a]; [a][1]overlay=960'  -g 500 -pix_fmt yuv420p -c librav1e -qp 182 -speed 1 -y seq.webm
 ```
+
+</details>
+
+
+TODO: insert video here
 
 
 ## Installation
@@ -75,6 +96,9 @@ OPTIONS:
 
     --no-header
       First line of the CSV is not headers
+
+    --no-output-header
+      Do not output CSV header even though input has headers
 
     --delimiter <delimiter>
       Field delimiter in CSV files. Comma by default.
@@ -140,9 +164,11 @@ OPTIONS:
     --debug
       Print various values, including algorithm parameter values
 
+    -N, --normalize
+      Automatically normalize the data
+
     -h, --help
       Prints help information.
-
 
 ```
 </details>
