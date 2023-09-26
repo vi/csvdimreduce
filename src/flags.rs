@@ -81,27 +81,59 @@ xflags::xflags! {
         /// Use `xsv headers your_file.csv` to find out column numbers.
         required columns: ColumnsSpecifier
         /// Number of output coordinates (new fields in CSV containing computed values)
+        /// 
+        /// This includes temporary coordinates used for squeezing (-S).
         required n_out_coords: usize
+        /// Input csv file. Use stdin if absent.
         optional path: PathBuf
-        optional --debug
+        optional --save-each-n-iters n : usize
+        /// First line of the CSV is not headers
         optional --no-header
+        /// Field delimiter in CSV files. Comma by default.
         optional --delimiter delimiter : DelimiterSpecifier
+        /// Override line delimiter in CSV files.
         optional --record-delimiter delimiter : DelimiterSpecifier
+        /// Save file there instead of stdout
         optional -o,--output path: PathBuf
+        /// Initial particle positions
         optional --random-seed seed: u64
         /// Use this column as weights
         optional -w,--weight column_number: usize
+        /// Basic number of iterations. Default is 100.
+        /// Note that complexity of each iteration is quadratic of number of lines in CSV.
         optional -n, --n-iters n: usize
+        /// Initial rate of change i.e. distance the fastest particle travels per iteration.
+        /// Default is 0.01.
         optional -r,--rate rate: f64
-        optional -d,--rate-decay decay: f64
-        optional -C,--central-force f: f64
+        /// Apply each movement multiplpe times, decaying it by this factor. Default is 0.9.
+        optional --inertia-multiplier x: f64
+        /// Ramp down rate of change to this value at the end.
+        optional -R,--final-rate final_decay: f64
+        /// Attract particles' coordinates to 0.5 with this strenght (relative to average inter-particle forces).
+        optional -c,--central-force f: f64
+        /// Additional repelling force between particles (even those with the same parameters). Default is 0.2
         optional -F,--same-particle-force f: f64
+        /// After doing usual iterations, perform additional steps to "flatten" the shape into fewer dimension count (squeeze phase).
+        /// Specified number of coodinaes are retained. For others, the `-c` central force is crancked up to `-C`, so they
+        /// (should) become flat "0.5" in the end.
+        /// This produces better results compared to just having that number of coordinates from the beginning.
         optional -S,--retain_coords_from_squeezing n: usize
+        /// Use this `-r` rate when doing the squeeze phase.
         optional --squeeze-rampup-rate rate: f64
+        /// User this number of iterations of the first phase of squeezing phase.
+        /// This applies to each squeezed dimension sequentially.
         optional --squeeze-rampup-iters n: usize
-        optional --squeeze-final-force f: f64
+        /// This this central force for the squeezed dimensions.
+        /// The force is gradually increased from `-C` to this value during the rampup phase.
+        optional -C,--squeeze-final-force f: f64
+        /// Override `-r` rate for the second phase of squeezing. It decays with `-d` each iteration.
         optional --squeeze-final-initial-rate rate : f64
+        /// Number of iterations of the second phase of squeezeing (where central force no longer changes, just to increase precision)
         optional --squeeze-final-iters n : usize
+        /// Gradually increase rate from zero during this number of iterations. Defaults to 10.
+        optional --warmup-iterations n : usize
+        /// Print various values, including algorithm parameter values
+        optional --debug
     }
 }
 // generated start
@@ -113,7 +145,7 @@ pub struct Csvdimreduce {
     pub n_out_coords: usize,
     pub path: Option<PathBuf>,
 
-    pub debug: bool,
+    pub save_each_n_iters: Option<usize>,
     pub no_header: bool,
     pub delimiter: Option<DelimiterSpecifier>,
     pub record_delimiter: Option<DelimiterSpecifier>,
@@ -122,7 +154,8 @@ pub struct Csvdimreduce {
     pub weight: Option<usize>,
     pub n_iters: Option<usize>,
     pub rate: Option<f64>,
-    pub rate_decay: Option<f64>,
+    pub inertia_multiplier: Option<f64>,
+    pub final_rate: Option<f64>,
     pub central_force: Option<f64>,
     pub same_particle_force: Option<f64>,
     pub retain_coords_from_squeezing: Option<usize>,
@@ -131,6 +164,8 @@ pub struct Csvdimreduce {
     pub squeeze_final_force: Option<f64>,
     pub squeeze_final_initial_rate: Option<f64>,
     pub squeeze_final_iters: Option<usize>,
+    pub warmup_iterations: Option<usize>,
+    pub debug: bool,
 }
 
 impl Csvdimreduce {

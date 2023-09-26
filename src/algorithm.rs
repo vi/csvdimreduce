@@ -14,17 +14,24 @@ pub struct State<'a> {
     pub coords: Ar2Mut<'a>,
     /// First dimension - particle index, Second dimension - coordinate
     pub forces: Ar2Mut<'a>,
+    /// Dimensions the same as above.
+    pub inertias: Ar2Mut<'a>,
     pub weights: Ar1Ref<'a>,
     pub affinities: Ar2Ref<'a>,
-}
-pub struct Params<'a> {
-    pub rate: f64,
-    pub central_force: f64,
     /// Dimension is like in coordinates
     pub tmp: Ar1Mut<'a>,
+    pub movement_scaler : f64,
+}
+pub struct Params {
+    pub rate: f64,
+    pub central_force: f64,
     pub squeeze_from: usize,
-    // Like `central_force`, but applies starting from `squeeze_from` coordinate number
+    /// Like `central_force`, but applies to `squeeze_from` coordinate number.
     pub squeeze_force: f64,
+    /// Like `squeeze_force`, but for coordinates above `squeeze_from`.
+    pub squeeze_force2: f64,
+    pub inertia_multiplier: f64,
+    pub debug: bool,
 }
 
 impl<'a> State<'a> {
@@ -39,9 +46,10 @@ impl<'a> State<'a> {
         let central_force = params.central_force;
         let squeeze_from = params.squeeze_from;
         let squeeze_force = params.squeeze_force;
+        let squeeze_force2 = params.squeeze_force2;
         
         self.forces.fill(0.0);
-        let mut vector = &mut params.tmp;
+        let mut vector = &mut self.tmp;
 
         let coords = self.coords.view();
         let mut forces = self.forces.view_mut();
@@ -66,8 +74,8 @@ impl<'a> State<'a> {
                         sqnorm += *vc * *vc;
                     });
 
-                    if sqnorm < 0.0001 {
-                        sqnorm = 0.0001;
+                    if sqnorm < 0.00001 {
+                        sqnorm = 0.00001;
                     }
                     let norm = sqnorm.sqrt();
                     for x in vector.iter_mut() {
@@ -84,8 +92,10 @@ impl<'a> State<'a> {
             ) {
                 let mut cc = *cc;
                 cc = cc - 0.5;
-                if c >= squeeze_from {
+                if c == squeeze_from {
                     cc = squeeze_force*cc;
+                } else if c > squeeze_from {
+                    cc = squeeze_force2*cc;
                 } else {
                     cc = central_force*cc;
 
@@ -97,12 +107,17 @@ impl<'a> State<'a> {
         for f in forces {
             maxforcecoord = f.abs().max(maxforcecoord);
         }
+        if params.debug { println!("movement {maxforcecoord}"); }
         maxforcecoord = maxforcecoord.max(0.0001);
         
-        /// Force some coordinate change to be `rate` regardless of forces scale
-        let scale = params.rate / maxforcecoord;
+        self.movement_scaler = self.movement_scaler * 0.8 + maxforcecoord * 0.2;
 
-        self.coords.scaled_add(scale, &self.forces);
+        /// Force some coordinate change to be `rate` regardless of forces scale
+        let scale = params.rate / self.movement_scaler;
+
+        self.inertias.scaled_add(scale, &self.forces);
+        self.coords.scaled_add(1.0, &self.inertias);
+        self.inertias.map_inplace(|x|*x *= params.inertia_multiplier);
 
         for cc in self.coords.iter_mut() {
             *cc = cc.clamp(0.0, 1.0);
