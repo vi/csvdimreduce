@@ -62,8 +62,8 @@ $ ffmpeg -i beta/a.debug'%05d'.csv.png -i beta/b.debug'%05d'.csv.png -filter_com
 
 </details>
 
+[seq.webm](https://github.com/vi/csvdimreduce/assets/173219/36dcbd79-99f3-4c01-be56-fd25a9f2a2d2)
 
-TODO: insert video here
 
 
 ## Installation
