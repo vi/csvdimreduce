@@ -43,7 +43,7 @@ impl Csvdimreduce {
     }
     pub fn get_csv_writer(&self) -> csv::WriterBuilder {
         let mut b = csv::WriterBuilder::new();
-        if self.no_header {
+        if self.no_header || self.no_output_header {
             b.has_headers(false);
         }
         if let Some(ref x) = self.delimiter {
@@ -89,6 +89,8 @@ xflags::xflags! {
         optional --save-each-n-iters n : usize
         /// First line of the CSV is not headers
         optional --no-header
+        /// Do not output CSV header even though input has headers
+        optional --no-output-header
         /// Field delimiter in CSV files. Comma by default.
         optional --delimiter delimiter : DelimiterSpecifier
         /// Override line delimiter in CSV files.
@@ -134,6 +136,8 @@ xflags::xflags! {
         optional --warmup-iterations n : usize
         /// Print various values, including algorithm parameter values
         optional --debug
+        /// Automatically normalize the data
+        optional -N,--normalize
     }
 }
 // generated start
@@ -147,6 +151,7 @@ pub struct Csvdimreduce {
 
     pub save_each_n_iters: Option<usize>,
     pub no_header: bool,
+    pub no_output_header: bool,
     pub delimiter: Option<DelimiterSpecifier>,
     pub record_delimiter: Option<DelimiterSpecifier>,
     pub output: Option<PathBuf>,
@@ -166,6 +171,7 @@ pub struct Csvdimreduce {
     pub squeeze_final_iters: Option<usize>,
     pub warmup_iterations: Option<usize>,
     pub debug: bool,
+    pub normalize: bool,
 }
 
 impl Csvdimreduce {

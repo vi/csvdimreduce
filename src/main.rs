@@ -16,7 +16,7 @@ fn main() -> anyhow::Result<()> {
     let mut f = opts.get_csv_reader().from_reader(f);
 
     let mut records = Vec::<csv::ByteRecord>::with_capacity(1024);
-    let header: Option<csv::ByteRecord> = if f.has_headers() {
+    let header: Option<csv::ByteRecord> = if f.has_headers() && !opts.no_output_header {
         Some(f.byte_headers()?.clone())
     } else {
         None
@@ -61,6 +61,10 @@ fn main() -> anyhow::Result<()> {
             anyhow::bail!("Weight column is not found");
         }
     }
+    if opts.normalize {
+        algorithm::normalize(inputvals.view_mut());
+    }
+    //println!("{inputvals}");
     algorithm::build_particle_affinities(
         inputvals.view(),
         affinities.view_mut(),

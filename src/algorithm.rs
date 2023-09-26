@@ -145,3 +145,14 @@ pub fn build_particle_affinities<'a,'b>(input: Ar2Ref<'a>, mut output:Ar2Mut<'b>
 pub fn average_affinity<'a>(matrix: Ar2Ref<'a>) -> f64 {
     matrix.sum() / matrix.len() as f64
 }
+
+pub fn normalize<'a>(mut inputvals: Ar2Mut<'a>) {
+    let n_input_coords = inputvals.len_of(Axis(1));
+    for j in 0..n_input_coords {
+        let mut s = inputvals.slice_mut(s![.., j]);
+        let avg = s.sum() / s.len() as f64;
+        s -= avg;
+        let scale : f64 = s.dot(&s).sqrt();
+        s /= scale;
+    }
+}
