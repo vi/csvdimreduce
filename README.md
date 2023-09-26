@@ -8,7 +8,7 @@ Note the algorirm has quadratical space and time complixity in number of rows.
 
 ## Algorithm
 
-1. For each pair of input rows, calculate the repelling force between them. The force [L1 distance](https://en.wikipedia.org/wiki/Taxicab_geometry) between values in selected columns plus a small constant.
+1. For each pair of input rows, calculate the repelling force between them. The force is [L1 distance](https://en.wikipedia.org/wiki/Taxicab_geometry) between values in selected columns plus a small constant.
 2. Add specified number (N) of additional columns with random values from 0 to 1.
 3. Interpret rows as particles in N-dimensional space that are attracted to (0.5, 0.5, ..., 0.5) point, but repel from each other. Run it for specified number of iterations.
 4. Optionally continue running the particle simulation while increasing the "centripetal" force for some of the dimentions to "squeeze" the point cloud into a flatter shape. This is recommended if you want to assign 1- or 2-dimentional coordinates to your rows. "Squeezed" dimentions would still appear in the output, but are expected to have values `0.5`.
