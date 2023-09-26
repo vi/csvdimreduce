@@ -172,3 +172,7 @@ OPTIONS:
 
 ```
 </details>
+
+## See also
+
+* [pcacsv](https://github.com/vi/pcacsv) - CLI tool with similar UX, but other, linear algorithm.
